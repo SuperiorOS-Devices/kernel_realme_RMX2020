@@ -76,15 +76,11 @@
 #include "mtk_ovl.h"
 
 #ifdef VENDOR_EDIT
-/* Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2018/09/24,add mm critical log */
-#include <soc/oppo/mmkey_log.h>
 /*
 * liping-m@PSW.MM.Display.LCD.Stability, 2018/07/21,
 * add power seq api for ulps
 */
 #include <soc/oppo/oppo_project.h>
-/* Ling.Guo@PSW.MM.Display.LCD.Machine, 2018/12/03,add for mm kevent fb. */
-#include <linux/oppo_mm_kevent_fb.h>
 #endif /*VENDOR_EDIT*/
 /* For abnormal check */
 #ifdef VENDOR_EDIT
@@ -307,12 +303,6 @@ int do_esd_check_eint(void)
 	else
 		ret = 1; /* esd check fail */
 
-	#ifdef VENDOR_EDIT
-	/* Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2018/09/24,add mm critical log */
-	if (ret) {
-		mm_keylog_write("Dispaly Panel do_esd_check_eint fail\n", "ESD\n", TYPE_ESD_EXCEPTION);
-	}
-	#endif /* VENDOR_EDIT */
 	atomic_set(&esd_ext_te_event, 0);
 
 	return ret;
@@ -368,10 +358,6 @@ int do_esd_check_read(void)
 		}
 		/* do dsi reset */
 		dpmgr_path_build_cmdq(phandle, qhandle, CMDQ_DSI_RESET, 0);
-		#ifdef VENDOR_EDIT
-		/* Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2017/12/13,add mm critical log */
-		mm_keylog_write("Dispaly Panel do_esd_check_read fail\n", "ESD\n", TYPE_ESD_EXCEPTION);
-		#endif /* VENDOR_EDIT */
 		goto destroy_cmdq;
 	}
 
@@ -513,10 +499,6 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 	int i = 0;
 	int esd_try_cnt = 5;
 	int recovery_done = 0;
-	#ifdef VENDOR_EDIT
-	/* Ling.Guo@PSW.MM.Display.LCD.Machine, 2018/12/03,add for mm kevent fb. */
-	unsigned char payload[100] = "";
-	#endif
 
 	DISPFUNC();
 	sched_setscheduler(current, SCHED_RR, &param);
@@ -581,10 +563,6 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 				i);
 			primary_display_esd_recovery();
 			#ifdef VENDOR_EDIT
-			/* Ling.Guo@PSW.MM.Display.LCD.Machine, 2018/12/03,add for mm kevent fb. */
-			scnprintf(payload, sizeof(payload), "EventID@@%d$$panel_name@@%s$$ReportLevel@@%d",
-				OPPO_MM_DIRVER_FB_EVENT_ID_ESD,primary_get_lcm()->drv->name,OPPO_MM_DIRVER_FB_EVENT_REPORTLEVEL_HIGH);
-			upload_mm_kevent_fb_data(OPPO_MM_DIRVER_FB_EVENT_MODULE_DISPLAY,payload);
 			/*
 			* Yongpeng.Yi@PSW.MM.Display.LCD.Stability, 2018/01/12,
 			* add for esd recovery

@@ -90,7 +90,6 @@
 #include <linux/rodata_test.h>
 
 #include <asm/io.h>
-#include <asm/bugs.h>
 #include <asm/setup.h>
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
@@ -98,11 +97,6 @@
 #ifdef CONFIG_MTK_RAM_CONSOLE
 #include <mt-plat/mtk_ram_console.h>
 #endif
-
-#ifdef VENDOR_EDIT
-// Kun.Hu@TECH.BSP.Stability.PHOENIX_PROJECT 2019/06/11, Add for phoenix project
-#include "../drivers/soc/oppo/oppo_phoenix/oppo_phoenix.h"
-#endif  //VENDOR_EDIT
 
 static int kernel_init(void *);
 
@@ -496,8 +490,6 @@ void __init __weak thread_stack_cache_init(void)
 }
 #endif
 
-void __init __weak mem_encrypt_init(void) { }
-
 /*
  * Set up kernel memory allocators
  */
@@ -573,12 +565,6 @@ asmlinkage __visible void __init start_kernel(void)
 	sort_main_extable();
 	trap_init();
 	mm_init();
-
-#ifdef VENDOR_EDIT
-	// Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
-	if(phx_set_boot_stage)
-		phx_set_boot_stage(KERNEL_MM_INIT_DONE);
-#endif
 	ftrace_init();
 
 	/* trace_printk can be enabled here */
@@ -642,12 +628,6 @@ asmlinkage __visible void __init start_kernel(void)
 	WARN(!irqs_disabled(), "Interrupts were enabled early\n");
 	early_boot_irqs_disabled = false;
 	local_irq_enable();
-
-#ifdef VENDOR_EDIT
-    // Kun.Hu@TECH.BSP.Stability.PHOENIX_PROJECT 2019/06/11, Add for phoenix project
-	if(phx_set_boot_stage)
-		phx_set_boot_stage(KERNEL_LOCAL_IRQ_ENABLE);
-#endif
 	kmem_cache_init_late();
 
 	/*
@@ -669,14 +649,6 @@ asmlinkage __visible void __init start_kernel(void)
 	 */
 	locking_selftest();
 
-	/*
-	 * This needs to be called before any devices perform DMA
-	 * operations that might use the SWIOTLB bounce buffers. It will
-	 * mark the bounce buffers as decrypted so that their usage will
-	 * not cause "plain-text" data to be decrypted when accessed.
-	 */
-	mem_encrypt_init();
-
 #ifdef CONFIG_BLK_DEV_INITRD
 	if (initrd_start && !initrd_below_start_ok &&
 	    page_to_pfn(virt_to_page((void *)initrd_start)) < min_low_pfn) {
@@ -693,6 +665,9 @@ asmlinkage __visible void __init start_kernel(void)
 	if (late_time_init)
 		late_time_init();
 	calibrate_delay();
+
+	arch_cpu_finalize_init();
+
 	pidmap_init();
 	anon_vma_init();
 	acpi_early_init();
@@ -717,13 +692,6 @@ asmlinkage __visible void __init start_kernel(void)
 	cgroup_init();
 	taskstats_init_early();
 	delayacct_init();
-
-#ifdef VENDOR_EDIT
-    // Kun.Hu@PSW.TECH.RELIABILTY, 2018/11/15, add for project phoenix(hang oppo)
-	if(phx_set_boot_stage)
-		phx_set_boot_stage(KERNEL_DELAYACCT_INIT_DONE);
-#endif
-	check_bugs();
 
 	acpi_subsystem_init();
 	arch_post_acpi_subsys_init();
@@ -935,12 +903,6 @@ static void __init do_initcall_level(int level)
 		do_one_initcall(*fn);
 }
 
-#ifdef VENDOR_EDIT
-//cuixiaogang@SRC.hypnus.2019-1-3. add for hypnusd
-#ifdef CONFIG_OPPO_HYPNUS
-extern int __init hypnus_init(void);
-#endif
-#endif /* VENDOR_EDIT */
 static void __init do_initcalls(void)
 {
 	int level;
@@ -951,12 +913,6 @@ static void __init do_initcalls(void)
 	aee_rr_rec_last_init_func(~(unsigned long)(0));
 #endif
 
-#ifdef VENDOR_EDIT
-//cuixiaogang@SRC.hypnus.2019-1-3. add for hypnusd
-#ifdef CONFIG_OPPO_HYPNUS
-   hypnus_init();
-#endif
-#endif /* VENDOR_EDIT */
 }
 
 /*
@@ -971,20 +927,10 @@ static void __init do_basic_setup(void)
 	cpuset_init_smp();
 	shmem_init();
 	driver_init();
-#ifdef VENDOR_EDIT
-    // Kun.Hu@TECH.BSP.Stability.PHOENIX_PROJECT 2019/06/11, Add for phoenix project
-	if(phx_set_boot_stage)
-		phx_set_boot_stage(KERNEL_DRIVER_INIT_DONE);
-#endif
 	init_irq_proc();
 	do_ctors();
 	usermodehelper_enable();
 	do_initcalls();
-#ifdef VENDOR_EDIT
-    // Kun.Hu@TECH.BSP.Stability.PHOENIX_PROJECT 2019/06/11, Add for phoenix project
-	if(phx_set_boot_stage)
-		phx_set_boot_stage(KERNEL_DO_INITCALLS_DONE);
-#endif
 }
 
 static void __init do_pre_smp_initcalls(void)
@@ -1081,11 +1027,6 @@ static int __ref kernel_init(void *unused)
 #ifdef CONFIG_MTPROF
 		log_boot("Kernel_init_done");
 #endif
-#ifdef VENDOR_EDIT
-        // Kun.Hu@TECH.BSP.Stability.PHOENIX_PROJECT 2019/06/11, Add for phoenix project
-	if(phx_set_boot_stage)
-		phx_set_boot_stage(KERNEL_INIT_DONE);
-#endif
 	if (ramdisk_execute_command) {
 		ret = run_init_process(ramdisk_execute_command);
 		if (!ret)
@@ -1152,11 +1093,6 @@ static noinline void __init kernel_init_freeable(void)
 
 	do_basic_setup();
 
-#ifdef VENDOR_EDIT
-    // Kun.Hu@TECH.BSP.Stability.PHOENIX_PROJECT 2019/06/11, Add for phoenix project
-	if(phx_set_boot_stage)
-		phx_set_boot_stage(KERNEL_DO_BASIC_SETUP_DONE);
-#endif
 	/* Open the /dev/console on the rootfs, this should never fail */
 	if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
 		pr_err("Warning: unable to open an initial console.\n");
